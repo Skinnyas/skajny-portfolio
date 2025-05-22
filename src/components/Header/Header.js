@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { Link as RouterLink } from 'react-router-dom';
 import { 
   AppBar, 
   Toolbar, 
@@ -12,9 +11,14 @@ import {
   ListItemText,
   useMediaQuery,
   useTheme,
-  Box
+  Box,
+  Avatar
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
+import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
+import { Link as RouterLink, useNavigate } from 'react-router-dom';
+import { useAuthState, signOut } from 'firebase/auth';
+import { auth } from '../../firebase';
 
 const navItems = [
   { text: 'Domů', path: '/' },
@@ -28,6 +32,17 @@ function Header() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const [user] = useAuthState(auth);
+  const navigate = useNavigate();
+  
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      navigate('/');
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+  };
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -61,23 +76,56 @@ function Header() {
   return (
     <AppBar position="static">
       <Toolbar>
-        <Typography
-          variant="h6"
-          component={RouterLink}
-          to="/"
-          sx={{ 
-            flexGrow: 1, 
-            fontWeight: 'bold',
-            color: 'inherit',
-            textDecoration: 'none',
-            '&:hover': {
-              cursor: 'pointer',
-              opacity: 0.9
-            }
-          }}
-        >
-          Skajny Portfolio
-        </Typography>
+        <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'center' }}>
+          <Typography
+            variant="h6"
+            component={RouterLink}
+            to="/"
+            sx={{ 
+              fontWeight: 'bold',
+              color: 'inherit',
+              textDecoration: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              '&:hover': {
+                cursor: 'pointer',
+                opacity: 0.9
+              }
+            }}
+          >
+            Skajny Portfolio
+          </Typography>
+        </Box>
+        
+        {user ? (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <IconButton 
+              color="inherit" 
+              component={RouterLink} 
+              to="/admin/messages"
+              title="Administrace"
+            >
+              <AdminPanelSettingsIcon />
+            </IconButton>
+            <Button 
+              color="inherit" 
+              onClick={handleLogout}
+              sx={{ textTransform: 'none' }}
+            >
+              Odhlásit se
+            </Button>
+          </Box>
+        ) : (
+          <Button 
+            color="inherit" 
+            component={RouterLink} 
+            to="/admin"
+            startIcon={<AdminPanelSettingsIcon />}
+            sx={{ textTransform: 'none' }}
+          >
+            Přihlásit se
+          </Button>
+        )}
         
         {isMobile ? (
           <IconButton

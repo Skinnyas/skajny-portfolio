@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { sendMessage } from '../../services/messageService';
 import { 
   Box, 
   Container, 
@@ -75,23 +76,31 @@ function Contact() {
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Here you would typically send the form data to your backend
-    console.log('Form submitted:', formData);
     
-    // Show success message
-    setSnackbarMessage('Zpráva byla úspěšně odeslána!');
-    setSnackbarSeverity('success');
+    // Odeslání zprávy do Firebase
+    const result = await sendMessage(formData);
+    
+    if (result.success) {
+      // Zobrazení úspěšné zprávy
+      setSnackbarMessage('Zpráva byla úspěšně odeslána!');
+      setSnackbarSeverity('success');
+      
+      // Reset formuláře
+      setFormData({
+        name: '',
+        email: '',
+        subject: '',
+        message: '',
+      });
+    } else {
+      // Zobrazení chybové zprávy
+      setSnackbarMessage('Nepodařilo se odeslat zprávu. Zkuste to prosím později.');
+      setSnackbarSeverity('error');
+    }
+    
     setOpenSnackbar(true);
-    
-    // Reset form
-    setFormData({
-      name: '',
-      email: '',
-      subject: '',
-      message: '',
-    });
   };
 
   const handleCloseSnackbar = (event, reason) => {
