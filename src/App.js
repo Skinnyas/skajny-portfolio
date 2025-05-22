@@ -14,7 +14,7 @@ import Services from './components/Services/Services';
 import Portfolio from './components/Portfolio/Portfolio';
 import Contact from './components/Contact/Contact';
 import Footer from './components/Footer/Footer';
-import { AdminLogin, MessagesList, PrivateRoute } from './components/Admin';
+import { AdminLogin, MessagesList, PortfolioManager, PrivateRoute } from './components/Admin';
 import FloatingAdmin from './components/FloatingAdmin/FloatingAdmin';
 import CustomCursor from './components/CustomCursor/CustomCursor';
 
@@ -91,6 +91,14 @@ function App() {
             element={
               <PrivateRoute user={user}>
                 <MessagesList />
+              </PrivateRoute>
+            } 
+          />
+          <Route 
+            path="/admin/portfolio" 
+            element={
+              <PrivateRoute user={user}>
+                <PortfolioManager />
               </PrivateRoute>
             } 
           />

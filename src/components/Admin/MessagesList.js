@@ -61,6 +61,25 @@ function MessagesList() {
     return new Date(dateString).toLocaleString('cs-CZ');
   };
 
+  if (messages.length === 0) {
+    return (
+      <Container maxWidth="lg" sx={{ mt: 4, textAlign: 'center' }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mt: 4 }}>
+          <Typography variant="h5" gutterBottom>
+            Žádné zprávy k zobrazení
+          </Typography>
+          <Button
+            variant="contained"
+            onClick={loadMessages}
+            sx={{ mt: 2 }}
+          >
+            Načíst znovu
+          </Button>
+        </Box>
+      </Container>
+    );
+  }
+
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
@@ -96,9 +115,9 @@ function MessagesList() {
                   hover
                   sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
                 >
-                  <TableCell>{message.name}</TableCell>
-                  <TableCell>{message.email}</TableCell>
-                  <TableCell>{message.subject}</TableCell>
+                  <TableCell>{message.name || 'Neznámý'}</TableCell>
+                  <TableCell>{message.email || 'Neznámý email'}</TableCell>
+                  <TableCell>{message.subject || 'Bez předmětu'}</TableCell>
                   <TableCell>{formatDate(message.createdAt)}</TableCell>
                   <TableCell align="center">
                     <IconButton

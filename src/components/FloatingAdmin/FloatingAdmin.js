@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth } from '../../firebase';
-import { AdminPanelSettings, Logout } from '@mui/icons-material';
-import { IconButton, Tooltip } from '@mui/material';
+import { AdminPanelSettings, Logout, Dashboard, Work, Message } from '@mui/icons-material';
+import { IconButton, Tooltip, Menu, MenuItem, ListItemIcon, ListItemText } from '@mui/material';
 import { styled } from '@mui/material/styles';
 
 const FloatingButton = styled('div')(({ theme, isvisible, isloggedin }) => ({
@@ -27,8 +27,11 @@ const FloatingButton = styled('div')(({ theme, isvisible, isloggedin }) => ({
 
 function FloatingAdmin() {
   const [isVisible, setIsVisible] = useState(false);
+  const [anchorEl, setAnchorEl] = useState(null);
   const [user] = useAuthState(auth);
   const navigate = useNavigate();
+  const location = useLocation();
+  const open = Boolean(anchorEl);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -51,11 +54,31 @@ function FloatingAdmin() {
     };
   }, []);
 
-  const handleClick = () => {
-    if (user) {
-      navigate('/admin/messages');
-    } else {
+  const handleMenuOpen = (event) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+  };
+
+  const handleNavigation = (path) => {
+    navigate(path);
+    setAnchorEl(null);
+  }; 
+  
+  const handleAdminClick = () => {
+    if (!user) {
       navigate('/admin');
+    } else {
+      setAnchorEl(null);
+      // Show menu for logged-in users
+      const event = {
+        currentTarget: document.querySelector('#admin-button')
+      };
+      if (event.currentTarget) {
+        handleMenuOpen(event);
+      }
     }
   };
 
@@ -70,35 +93,75 @@ function FloatingAdmin() {
   };
 
   return (
-    <FloatingButton 
-      isvisible={isVisible.toString()} 
-      isloggedin={(!!user).toString()}
-      onMouseEnter={() => setIsVisible(true)}
-      onMouseLeave={() => setIsVisible(false)}
-    >
-      <Tooltip title={user ? 'Administrace' : 'Přihlásit se'}>
-        <IconButton onClick={handleClick} size="large">
-          <AdminPanelSettings />
-        </IconButton>
-      </Tooltip>
-      {user && (
-        <Tooltip title="Odhlásit se">
+    <>
+      <FloatingButton 
+        isvisible={isVisible.toString()} 
+        isloggedin={(!!user).toString()}
+        onMouseEnter={() => setIsVisible(true)}
+        onMouseLeave={() => setIsVisible(false)}
+      >
+        <Tooltip title={user ? 'Administrace' : 'Přihlásit se'}>
           <IconButton 
-            onClick={handleLogout} 
-            size="large" 
-            sx={{ 
-              marginLeft: '8px',
-              backgroundColor: 'rgba(220, 0, 78, 0.9)',
-              '&:hover': {
-                backgroundColor: 'rgba(197, 17, 98, 1)',
-              },
-            }}
+            id="admin-button"
+            onClick={handleAdminClick} 
+            size="large"
+            aria-controls={open ? 'admin-menu' : undefined}
+            aria-haspopup="true"
+            aria-expanded={open ? 'true' : undefined}
           >
-            <Logout />
+            <AdminPanelSettings />
           </IconButton>
         </Tooltip>
-      )}
-    </FloatingButton>
+        {user && (
+          <Tooltip title="Odhlásit se">
+            <IconButton 
+              onClick={handleLogout} 
+              size="large" 
+              sx={{ 
+                marginLeft: '8px',
+                backgroundColor: 'rgba(220, 0, 78, 0.9)',
+                '&:hover': {
+                  backgroundColor: 'rgba(197, 17, 98, 1)',
+                },
+              }}
+            >
+              <Logout />
+            </IconButton>
+          </Tooltip>
+        )}
+      </FloatingButton>
+
+      <Menu
+        id="admin-menu"
+        anchorEl={anchorEl}
+        open={open}
+        onClose={handleMenuClose}
+        MenuListProps={{
+          'aria-labelledby': 'admin-button',
+        }}
+        anchorOrigin={{
+          vertical: 'top',
+          horizontal: 'left',
+        }}
+        transformOrigin={{
+          vertical: 'bottom',
+          horizontal: 'right',
+        }}
+      >
+        <MenuItem onClick={() => handleNavigation('/admin/zpravy')}>
+          <ListItemIcon>
+            <Message fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>Zprávy</ListItemText>
+        </MenuItem>
+        <MenuItem onClick={() => handleNavigation('/admin/portfolio')}>
+          <ListItemIcon>
+            <Work fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>Moje práce</ListItemText>
+        </MenuItem>
+      </Menu>
+    </>
   );
 }
 

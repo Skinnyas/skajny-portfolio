@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Box, 
   Container, 
@@ -19,82 +19,14 @@ import {
   DialogTitle,
   DialogContent,
   DialogContentText,
-  DialogActions
+  DialogActions,
+  CircularProgress
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import GitHubIcon from '@mui/icons-material/GitHub';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import CloseIcon from '@mui/icons-material/Close';
-
-// Sample portfolio items - replace with your actual projects
-const portfolioItems = [
-  {
-    id: 1,
-    title: 'E-commerce Web',
-    description: 'Kompletní e-commerce řešení s platební branou a správou zboží.',
-    image: 'https://via.placeholder.com/600x400',
-    tags: ['React', 'Node.js', 'MongoDB', 'Stripe'],
-    demoUrl: '#',
-    codeUrl: '#',
-    category: 'web',
-    fullDescription: 'Tento projekt představuje kompletní e-commerce řešení postavené na MERN stacku (MongoDB, Express, React, Node.js). Obsahuje správu produktů, uživatelský účet, košík, platební bránu Stripe a administrační rozhraní.'
-  },
-  {
-    id: 2,
-    title: 'Mobilní aplikace',
-    description: 'Aplikace pro správu osobních financí s přehledným rozhraním.',
-    image: 'https://via.placeholder.com/600x400',
-    tags: ['React Native', 'Firebase', 'Redux'],
-    demoUrl: '#',
-    codeUrl: '#',
-    category: 'mobile',
-    fullDescription: 'Aplikace pro správu osobních financí umožňující uživatelům sledovat své příjmy a výdaje, nastavovat rozpočty a generovat přehledy. Aplikace je postavena na React Native a využívá Firebase pro ukládání dat a autentizaci uživatelů.'
-  },
-  {
-    id: 3,
-    title: 'Firemní web',
-    description: 'Moderní firemní web s administrací obsahu.',
-    image: 'https://via.placeholder.com/600x400',
-    tags: ['Next.js', 'Contentful', 'Tailwind CSS'],
-    demoUrl: '#',
-    codeUrl: '#',
-    category: 'web',
-    fullDescription: 'Responzivní firemní web postavený na Next.js s headless CMS Contentful pro správu obsahu. Web obsahuje blog, referenční případy a kontaktní formulář.'
-  },
-  {
-    id: 4,
-    title: 'Aplikace pro správu úkolů',
-    description: 'Aplikace pro správu projektů a úkolů s týmovou spoluprací.',
-    image: 'https://via.placeholder.com/600x400',
-    tags: ['React', 'Node.js', 'GraphQL', 'MongoDB'],
-    demoUrl: '#',
-    codeUrl: '#',
-    category: 'web',
-    fullDescription: 'Komplexní aplikace pro správu projektů s funkcí přidělování úkolů, sledování průběhu, komentářů a notifikací. Postaveno na MERN stacku s GraphQL API.'
-  },
-  {
-    id: 5,
-    title: 'Předpověď počasí',
-    description: 'Aplikace pro zobrazení aktuální předpovědi počasí.',
-    image: 'https://via.placeholder.com/600x400',
-    tags: ['React', 'OpenWeather API', 'Material-UI'],
-    demoUrl: '#',
-    codeUrl: '#',
-    category: 'mobile',
-    fullDescription: 'Uživatelsky přívětivá aplikace pro zobrazení aktuální předpovědi počasí a pětidenní předpovědi. Aplikace využívá OpenWeather API a umožňuje vyhledávání podle města.'
-  },
-  {
-    id: 6,
-    title: 'Portfolio web',
-    description: 'Osobní portfolio web pro grafického designéra.',
-    image: 'https://via.placeholder.com/600x400',
-    tags: ['Gatsby', 'GraphQL', 'Styled Components'],
-    demoUrl: '#',
-    codeUrl: '#',
-    category: 'web',
-    fullDescription: 'Moderní a výkonné portfolio postavené na Gatsby.js s využitím GraphQL pro správu dat. Web je optimalizovaný pro vyhledávače a nabízí plynulé animace.'
-  },
-];
+import { getPortfolioItems } from '../../services/portfolioService';
 
 const categories = [
   { id: 'all', label: 'Vše' },
@@ -115,9 +47,30 @@ const PortfolioItem = styled(Card)(({ theme }) => ({
 
 function Portfolio() {
   const theme = useTheme();
+  const [portfolioItems, setPortfolioItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedProject, setSelectedProject] = useState(null);
   const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    const fetchPortfolioItems = async () => {
+      try {
+        setLoading(true);
+        const items = await getPortfolioItems();
+        setPortfolioItems(items);
+        setError(null);
+      } catch (err) {
+        console.error('Error fetching portfolio items:', err);
+        setError('Nepodařilo se načíst portfolio. Zkuste to prosím později.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPortfolioItems();
+  }, []);
 
   const handleCategoryChange = (event, newValue) => {
     setSelectedCategory(newValue);
@@ -134,7 +87,7 @@ function Portfolio() {
 
   const filteredItems = selectedCategory === 'all' 
     ? portfolioItems 
-    : portfolioItems.filter(item => item.category === selectedCategory);
+    : portfolioItems.filter(item => item.category && item.category.toLowerCase() === selectedCategory);
 
   return (
     <Box sx={{ py: 8, bgcolor: 'background.paper' }}>
@@ -195,74 +148,86 @@ function Portfolio() {
           </Paper>
         </Box>
 
-        <Grid container spacing={4}>
-          {filteredItems.map((item) => (
-            <Grid item xs={12} sm={6} md={4} key={item.id}>
-              <PortfolioItem elevation={3}>
-                <CardMedia
-                  component="img"
-                  height="200"
-                  image={item.image}
-                  alt={item.title}
-                  sx={{
-                    objectFit: 'cover',
-                    cursor: 'pointer',
-                    '&:hover': {
-                      opacity: 0.9,
-                    },
-                  }}
-                  onClick={() => handleOpenDialog(item)}
-                />
-                <CardContent sx={{ flexGrow: 1 }}>
-                  <Typography 
-                    gutterBottom 
-                    variant="h5" 
-                    component="h3"
-                    sx={{ fontWeight: 'bold' }}
-                  >
-                    {item.title}
-                  </Typography>
-                  <Typography 
-                    variant="body2" 
-                    color="text.secondary"
-                    sx={{ mb: 2 }}
-                  >
-                    {item.description}
-                  </Typography>
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 2 }}>
-                    {item.tags.map((tag, index) => (
-                      <Chip 
-                        key={index} 
-                        label={tag} 
+        {loading ? (
+          <Box display="flex" justifyContent="center" alignItems="center" minHeight="300px">
+            <CircularProgress />
+          </Box>
+        ) : error ? (
+          <Box textAlign="center" py={4}>
+            <Typography color="error" variant="h6">
+              {error}
+            </Typography>
+            <Button 
+              variant="contained" 
+              color="primary" 
+              onClick={() => window.location.reload()}
+              sx={{ mt: 2 }}
+            >
+              Zkusit znovu
+            </Button>
+          </Box>
+        ) : filteredItems.length === 0 ? (
+          <Box textAlign="center" py={4} width="100%">
+            <Typography variant="h6" color="textSecondary">
+              Žádné projekty k zobrazení
+            </Typography>
+          </Box>
+        ) : (
+          <Grid container spacing={4}>
+            {filteredItems.map((item) => (
+              <Grid item xs={12} sm={6} md={4} key={item.id}>
+                <PortfolioItem elevation={3}>
+                  <CardMedia
+                    component="img"
+                    height="200"
+                    image={item.imageUrl || 'https://via.placeholder.com/600x400'}
+                    alt={item.title}
+                    sx={{
+                      objectFit: 'cover',
+                      cursor: 'pointer',
+                      '&:hover': {
+                        opacity: 0.9,
+                      },
+                    }}
+                    onClick={() => handleOpenDialog(item)}
+                  />
+                  <CardContent sx={{ flexGrow: 1 }}>
+                    <Typography 
+                      gutterBottom 
+                      variant="h5" 
+                      component="h3"
+                      sx={{ fontWeight: 'bold' }}
+                    >
+                      {item.title}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                      {item.description}
+                    </Typography>
+                  </CardContent>
+                  <CardActions sx={{ mt: 'auto', p: 2 }}>
+                    {item.githubUrl && (
+                      <Button 
                         size="small" 
-                        variant="outlined"
-                      />
-                    ))}
-                  </Box>
-                </CardContent>
-                <CardActions sx={{ p: 2, pt: 0 }}>
-                  <Button 
-                    size="small" 
-                    color="primary"
-                    startIcon={<OpenInNewIcon />}
-                    onClick={() => window.open(item.demoUrl, '_blank')}
-                    disabled={!item.demoUrl}
-                  >
-                    Živá ukázka
-                  </Button>
-                  <Button 
-                    size="small" 
-                    startIcon={<GitHubIcon />}
-                    onClick={() => window.open(item.codeUrl, '_blank')}
-                    disabled={!item.codeUrl}
-                  >
-                    Kód
-                  </Button>
-                </CardActions>
-              </PortfolioItem>
-            </Grid>
-          ))}
-        </Grid>
+                        startIcon={<GitHubIcon />}
+                        onClick={() => window.open(item.githubUrl, '_blank')}
+                      >
+                        Kód
+                      </Button>
+                    )}
+                    <Button 
+                      size="small" 
+                      startIcon={<OpenInNewIcon />}
+                      onClick={() => handleOpenDialog(item)}
+                      sx={{ ml: 'auto' }}
+                    >
+                      Více informací
+                    </Button>
+                  </CardActions>
+                </PortfolioItem>
+              </Grid>
+            ))}
+          </Grid>
+        )}
       </Container>
 
       {/* Project Details Dialog */}
@@ -274,15 +239,12 @@ function Portfolio() {
       >
         {selectedProject && (
           <>
-            <DialogTitle sx={{ m: 0, p: 2 }}>
+            <DialogTitle sx={{ m: 0, p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               {selectedProject.title}
               <IconButton
                 aria-label="close"
                 onClick={handleCloseDialog}
                 sx={{
-                  position: 'absolute',
-                  right: 8,
-                  top: 8,
                   color: (theme) => theme.palette.grey[500],
                 }}
               >
@@ -292,29 +254,38 @@ function Portfolio() {
             <DialogContent dividers>
               <Box sx={{ mb: 3 }}>
                 <img 
-                  src={selectedProject.image} 
+                  src={selectedProject.imageUrl || 'https://via.placeholder.com/800x450'} 
                   alt={selectedProject.title} 
                   style={{ 
                     width: '100%', 
                     height: 'auto', 
                     borderRadius: '8px',
-                    marginBottom: '16px'
+                    marginBottom: '16px',
+                    maxHeight: '400px',
+                    objectFit: 'contain'
                   }} 
                 />
                 <DialogContentText>
-                  {selectedProject.fullDescription}
+                  {selectedProject.description}
+                  {selectedProject.fullDescription && (
+                    <Box mt={2}>
+                      <Typography variant="subtitle1" gutterBottom>
+                        Podrobnosti:
+                      </Typography>
+                      <Typography variant="body2">
+                        {selectedProject.fullDescription}
+                      </Typography>
+                    </Box>
+                  )}
                 </DialogContentText>
               </Box>
               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
-                {selectedProject.tags.map((tag, index) => (
-                  <Chip 
-                    key={index} 
-                    label={tag} 
-                    color="primary"
-                    variant="outlined"
-                    size="small"
-                  />
-                ))}
+                <Chip 
+                  label={selectedProject.category || 'web'} 
+                  color="primary"
+                  variant="outlined"
+                  size="small"
+                />
               </Box>
             </DialogContent>
             <DialogActions>
@@ -324,15 +295,28 @@ function Portfolio() {
               >
                 Zavřít
               </Button>
-              <Button 
-                onClick={() => window.open(selectedProject.demoUrl, '_blank')}
-                variant="contained"
-                color="primary"
-                disabled={!selectedProject.demoUrl}
-                startIcon={<OpenInNewIcon />}
-              >
-                Navštívit web
-              </Button>
+              {selectedProject.videoUrl && (
+                <Button 
+                  onClick={() => window.open(selectedProject.videoUrl, '_blank')}
+                  variant="contained"
+                  color="primary"
+                  startIcon={<OpenInNewIcon />}
+                  sx={{ ml: 1 }}
+                >
+                  Zobrazit video
+                </Button>
+              )}
+              {selectedProject.githubUrl && (
+                <Button 
+                  onClick={() => window.open(selectedProject.githubUrl, '_blank')}
+                  variant="contained"
+                  color="secondary"
+                  startIcon={<GitHubIcon />}
+                  sx={{ ml: 1 }}
+                >
+                  Zobrazit kód
+                </Button>
+              )}
             </DialogActions>
           </>
         )}
