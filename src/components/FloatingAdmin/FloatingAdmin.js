@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth } from '../../firebase';
-import { AdminPanelSettings, Logout, Dashboard, Work, Message } from '@mui/icons-material';
+import { AdminPanelSettings, Logout, Work, Message, Category } from '@mui/icons-material';
 import { IconButton, Tooltip, Menu, MenuItem, ListItemIcon, ListItemText } from '@mui/material';
 import { styled } from '@mui/material/styles';
 
@@ -30,7 +30,6 @@ function FloatingAdmin() {
   const [anchorEl, setAnchorEl] = useState(null);
   const [user] = useAuthState(auth);
   const navigate = useNavigate();
-  const location = useLocation();
   const open = Boolean(anchorEl);
 
   useEffect(() => {
@@ -158,7 +157,13 @@ function FloatingAdmin() {
           <ListItemIcon>
             <Work fontSize="small" />
           </ListItemIcon>
-          <ListItemText>Moje práce</ListItemText>
+          <ListItemText>Portfolio</ListItemText>
+        </MenuItem>
+        <MenuItem onClick={() => handleNavigation('/admin/kategorie')}>
+          <ListItemIcon>
+            <Category fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>Kategorie</ListItemText>
         </MenuItem>
       </Menu>
     </>

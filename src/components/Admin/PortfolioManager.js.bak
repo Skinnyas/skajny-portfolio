@@ -1,0 +1,491 @@
+import React, { useState, useEffect } from 'react';
+import { getPortfolioItems, addPortfolioItem, updatePortfolioItem, deletePortfolioItem } from '../../services/portfolioService';
+import { getCategories } from '../../services/categoryService';
+import { 
+  Container, Typography, Box, Button, Dialog, DialogTitle, DialogContent, DialogActions,
+  TextField, Grid, Card, CardContent, CardActions, IconButton, Tooltip, Divider, 
+  CircularProgress, Chip, FormControl, InputLabel, Select, MenuItem, FormGroup, 
+  FormControlLabel, Checkbox
+} from '@mui/material';
+import { 
+  Add as AddIcon, 
+  Edit as EditIcon, 
+  Delete as DeleteIcon, 
+  VideoLibrary as VideoIcon, 
+  Code as CodeIcon, 
+  Category as CategoryIcon 
+} from '@mui/icons-material';
+
+const PortfolioManager = () => {
+  const [items, setItems] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [openDialog, setOpenDialog] = useState(false);
+  const [currentItem, setCurrentItem] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [formData, setFormData] = useState({
+    title: '',
+    description: '',
+    githubUrl: '',
+    videoUrl: '',
+    imageUrl: '',
+    technologies: [],
+    categoryIds: []
+  });
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        const [portfolioData, categoriesData] = await Promise.all([
+          getPortfolioItems(),
+          getCategories()
+        ]);
+        setItems(portfolioData);
+        setCategories(categoriesData);
+      } catch (error) {
+        console.error('Error loading data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    loadData();
+  }, []);
+  
+  useEffect(() => {
+    const loadFilteredItems = async () => {
+      if (selectedCategory === 'all') {
+        const data = await getPortfolioItems();
+        setItems(data);
+      } else {
+        const data = await getPortfolioItems(selectedCategory);
+        setItems(data);
+      }
+    };
+    
+    if (selectedCategory) {
+      loadFilteredItems();
+    }
+  }, [selectedCategory]);
+
+  const loadItems = async () => {
+    try {
+      setLoading(true);
+      const [portfolioData, categoriesData] = await Promise.all([
+        getPortfolioItems(selectedCategory === 'all' ? null : selectedCategory),
+        getCategories()
+      ]);
+      setItems(portfolioData);
+      setCategories(categoriesData);
+    } catch (error) {
+      console.error('Error loading data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleOpenDialog = (item = null) => {
+    if (item) {
+      setCurrentItem(item.id);
+      setFormData({
+        title: item.title,
+        description: item.description,
+        githubUrl: item.githubUrl || '',
+        videoUrl: item.videoUrl || '',
+        imageUrl: item.imageUrl || '',
+        technologies: item.technologies || [],
+        categoryIds: item.categoryIds || []
+      });
+    } else {
+      setCurrentItem(null);
+      setFormData({
+        title: '',
+        description: '',
+        githubUrl: '',
+        videoUrl: '',
+        imageUrl: '',
+        technologies: [],
+        categoryIds: []
+      });
+    }
+    setOpenDialog(true);
+  };
+
+  const handleCloseDialog = () => {
+    setOpenDialog(false);
+    setCurrentItem(null);
+    setFormData({
+      title: '',
+      description: '',
+      githubUrl: '',
+      videoUrl: '',
+      imageUrl: '',
+      technologies: [],
+      categoryIds: []
+    });
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    
+    if (type === 'checkbox') {
+      setFormData(prev => {
+        const newCategoryIds = checked
+          ? [...prev.categoryIds, value]
+          : prev.categoryIds.filter(id => id !== value);
+          
+        return {
+          ...prev,
+          categoryIds: newCategoryIds
+        };
+      });
+    } else if (name === 'technologies') {
+      // Skip as technologies are handled separately
+      return;
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    }
+  };
+
+  const handleAddTechnology = (e) => {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      const tech = e.target.value.trim();
+      if (tech && !formData.technologies.includes(tech)) {
+        setFormData(prev => ({
+          ...prev,
+          technologies: [...prev.technologies, tech]
+        }));
+        e.target.value = '';
+      }
+    }
+  };
+
+  const handleRemoveTechnology = (techToRemove) => {
+    setFormData(prev => ({
+      ...prev,
+      technologies: prev.technologies.filter(tech => tech !== techToRemove)
+    }));
+  };
+
+  const handleRemoveCategory = (categoryIdToRemove) => {
+    setFormData(prev => ({
+      ...prev,
+      categoryIds: prev.categoryIds.filter(id => id !== categoryIdToRemove)
+    }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      if (currentItem) {
+        await updatePortfolioItem(currentItem, formData);
+      } else {
+        await addPortfolioItem(formData);
+      }
+      loadItems();
+      handleCloseDialog();
+    } catch (error) {
+      console.error('Error saving portfolio item:', error);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (window.confirm('Opravdu chcete smazat tuto práci z portfolia?')) {
+      try {
+        await deletePortfolioItem(id);
+        loadItems();
+      } catch (error) {
+        console.error('Error deleting portfolio item:', error);
+      }
+    }
+  };
+
+  if (loading) {
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="50vh">
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  return (
+    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+        <Typography variant="h4" component="h1">Správa portfolia</Typography>
+        <Button
+          variant="contained"
+          color="primary"
+          startIcon={<AddIcon />}
+          onClick={() => handleOpenDialog()}
+        >
+          Přidat projekt
+        </Button>
+      </Box>
+      
+      <Box mb={3}>
+        <FormControl variant="outlined" fullWidth>
+          <InputLabel>Filtrovat podle kategorie</InputLabel>
+          <Select
+            value={selectedCategory}
+            onChange={(e) => setSelectedCategory(e.target.value)}
+            label="Filtrovat podle kategorie"
+          >
+            <MenuItem value="all">Všechny projekty</MenuItem>
+            {categories.map(category => (
+              <MenuItem key={category.id} value={category.id}>
+                {category.name}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      </Box>
+
+      <Grid container spacing={3}>
+        {items.map((item) => (
+          <Grid item xs={12} md={6} lg={4} key={item.id}>
+            <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+              {item.imageUrl && (
+                <Box
+                  component="img"
+                  src={item.imageUrl}
+                  alt={item.title}
+                  sx={{
+                    width: '100%',
+                    height: 200,
+                    objectFit: 'cover',
+                  }}
+                />
+              )}
+              <CardContent sx={{ flexGrow: 1 }}>
+                <Typography gutterBottom variant="h5" component="h2">
+                  {item.title}
+                </Typography>
+                <Typography color="textSecondary" gutterBottom>
+                  {item.description.length > 100 ? `${item.description.substring(0, 100)}...` : item.description}
+                </Typography>
+                {item.categoryIds && item.categoryIds.length > 0 && (
+                  <Box mt={1}>
+                    {categories
+                      .filter(cat => item.categoryIds.includes(cat.id))
+                      .map(cat => (
+                        <Chip
+                          key={cat.id}
+                          icon={<CategoryIcon />}
+                          label={cat.name}
+                          size="small"
+                          style={{ marginRight: 4, marginBottom: 4 }}
+                        />
+                      ))}
+                  </Box>
+                )}
+                <Divider sx={{ my: 2 }} />
+                <Box sx={{ display: 'flex', gap: 2, mt: 'auto' }}>
+                  {item.githubUrl && (
+                    <Tooltip title="GitHub">
+                      <IconButton 
+                        href={item.githubUrl} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        size="small"
+                      >
+                        <CodeIcon />
+                      </IconButton>
+                    </Tooltip>
+                  )}
+                  {item.videoUrl && (
+                    <Tooltip title="Video ukázka">
+                      <IconButton 
+                        href={item.videoUrl} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        size="small"
+                      >
+                        <VideoIcon />
+                      </IconButton>
+                    </Tooltip>
+                  )}
+                </Box>
+              </CardContent>
+              <CardActions sx={{ justifyContent: 'flex-end' }}>
+                <IconButton 
+                  size="small" 
+                  color="primary" 
+                  onClick={() => handleOpenDialog(item)}
+                >
+                  <EditIcon />
+                </IconButton>
+                <IconButton 
+                  size="small" 
+                  color="error"
+                  onClick={() => handleDelete(item.id)}
+                >
+                  <DeleteIcon />
+                </IconButton>
+              </CardActions>
+            </Card>
+          </Grid>
+        ))}
+      </Grid>
+
+      <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
+        <form onSubmit={handleSubmit}>
+          <DialogTitle>{currentItem ? 'Upravit projekt' : 'Přidat nový projekt'}</DialogTitle>
+          <DialogContent>
+            <Grid container spacing={2} sx={{ mt: 1 }}>
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="Název projektu"
+                  name="title"
+                  value={formData.title}
+                  onChange={handleInputChange}
+                  required
+                  margin="normal"
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="Popis"
+                  name="description"
+                  value={formData.description}
+                  onChange={handleInputChange}
+                  required
+                  multiline
+                  rows={4}
+                  margin="normal"
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="Odkaz na GitHub"
+                  name="githubUrl"
+                  value={formData.githubUrl}
+                  onChange={handleInputChange}
+                  placeholder="https://github.com/username/repository"
+                  margin="normal"
+                />
+              </Grid>
+                  </Grid>
+                  <Grid item xs={12}>
+                    <TextField
+                      fullWidth
+                      label="Odkaz na video"
+                      name="videoUrl"
+                      value={formData.videoUrl}
+                      onChange={handleInputChange}
+                      placeholder="https://youtube.com/watch?v=..."
+                      margin="normal"
+                    />
+                  </Grid>
+                  <Grid item xs={12}>
+                    <Box sx={{ mt: 2, mb: 2 }}>
+                      <Typography variant="subtitle2" gutterBottom>
+                        Technologie (stiskněte Enter nebo čárku pro přidání)
+                      </Typography>
+                      <TextField
+                        fullWidth
+                        variant="outlined"
+                        size="small"
+                        onKeyDown={handleAddTechnology}
+                        placeholder="Zadejte technologii a stiskněte Enter"
+                      />
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
+                        {formData.technologies.map((tech, index) => (
+                          <Chip
+                            key={index}
+                            label={tech}
+                            onDelete={() => handleRemoveTechnology(tech)}
+                            size="small"
+                          />
+                        ))}
+                      </Box>
+                    </Box>
+                  </Grid>
+                  <Grid item xs={12}>
+                    <TextField
+                      margin="dense"
+                      name="imageUrl"
+                      label="Odkaz na obrázek"
+                      type="url"
+                      fullWidth
+                      variant="outlined"
+                      value={formData.imageUrl}
+                      onChange={handleInputChange}
+                    />
+                  </Grid>
+                  <Box mt={2} mb={2}>
+                    <Typography variant="subtitle1" gutterBottom>Kategorie</Typography>
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 1 }}>
+                      {formData.categoryIds.map(catId => {
+                        const category = categories.find(c => c.id === catId);
+                        return category ? (
+                          <Chip
+                            key={catId}
+                            label={category.name}
+                            onDelete={() => handleRemoveCategory(catId)}
+                            color="primary"
+                            variant="outlined"
+                            size="small"
+                          />
+                        ) : null;
+                      })}
+                    </Box>
+                    <TextField
+                      select
+                      fullWidth
+                      variant="outlined"
+                      size="small"
+                      value=""
+                      onChange={(e) => {
+                        const categoryId = e.target.value;
+                        if (categoryId && !formData.categoryIds.includes(categoryId)) {
+                          setFormData(prev => ({
+                            ...prev,
+                            categoryIds: [...prev.categoryIds, categoryId]
+                          }));
+                        }
+                        e.target.value = '';
+                      }}
+                      SelectProps={{
+                        native: true,
+                      }}
+                    >
+                      <option value="">Vyberte kategorii...</option>
+                      {categories
+                        .filter(cat => !formData.categoryIds.includes(cat.id))
+                        .map(category => (
+                          <option key={category.id} value={category.id}>
+                            {category.name}
+                          </option>
+                        ))}
+                    </TextField>
+                  </Box>
+                </Grid>
+              </DialogContent>
+              <DialogActions>
+                <Button onClick={handleCloseDialog}>Zrušit</Button>
+                <Button type="submit" variant="contained" color="primary">
+                  {currentItem ? 'Uložit změny' : 'Přidat práci'}
+                </Button>
+              </DialogActions>
+            </form>
+          </Dialog>
+        </Container>
+      );
+    };
+            </Button>
+          </DialogActions>
+        </form>
+      </Dialog>
+    </Container>
+  );
+};
+
+export default PortfolioManager;

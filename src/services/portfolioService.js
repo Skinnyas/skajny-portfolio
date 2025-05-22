@@ -1,11 +1,22 @@
 import { db } from '../firebase';
-import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, orderBy } from 'firebase/firestore';
+import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, orderBy, where } from 'firebase/firestore';
 
 // Get all portfolio items
-const getPortfolioItems = async () => {
+const getPortfolioItems = async (categoryId = null) => {
   try {
     const portfolioRef = collection(db, 'portfolio');
-    const q = query(portfolioRef, orderBy('createdAt', 'desc'));
+    let q;
+    
+    if (categoryId) {
+      q = query(
+        portfolioRef,
+        where('categoryIds', 'array-contains', categoryId),
+        orderBy('createdAt', 'desc')
+      );
+    } else {
+      q = query(portfolioRef, orderBy('createdAt', 'desc'));
+    }
+    
     const querySnapshot = await getDocs(q);
     
     return querySnapshot.docs.map(doc => ({
@@ -59,9 +70,32 @@ const deletePortfolioItem = async (id) => {
   }
 };
 
+// Get portfolio items by category
+const getPortfolioItemsByCategory = async (categoryId) => {
+  try {
+    const portfolioRef = collection(db, 'portfolio');
+    const q = query(
+      portfolioRef,
+      where('categoryIds', 'array-contains', categoryId),
+      orderBy('createdAt', 'desc')
+    );
+    
+    const querySnapshot = await getDocs(q);
+    
+    return querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+  } catch (error) {
+    console.error("Error getting portfolio items by category: ", error);
+    throw error;
+  }
+};
+
 export {
   getPortfolioItems,
   addPortfolioItem,
   updatePortfolioItem,
-  deletePortfolioItem
+  deletePortfolioItem,
+  getPortfolioItemsByCategory
 };

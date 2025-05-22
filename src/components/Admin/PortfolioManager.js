@@ -1,14 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { getPortfolioItems, addPortfolioItem, updatePortfolioItem, deletePortfolioItem } from '../../services/portfolioService';
-import {
+import { getCategories } from '../../services/categoryService';
+import { 
   Container, Typography, Box, Button, Dialog, DialogTitle, DialogContent, DialogActions,
-  TextField, Grid, Card, CardContent, CardActions, IconButton, Tooltip, Divider, CircularProgress
+  TextField, Grid, Card, CardContent, CardActions, IconButton, CircularProgress, 
+  Chip, FormControl, InputLabel, Select, MenuItem, Checkbox
 } from '@mui/material';
-import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, VideoLibrary as VideoIcon, Code as CodeIcon } from '@mui/icons-material';
+import { 
+  Add as AddIcon, 
+  Edit as EditIcon, 
+  Delete as DeleteIcon, 
+  VideoLibrary as VideoIcon, 
+  Code as CodeIcon
+} from '@mui/icons-material';
 
 const PortfolioManager = () => {
   const [items, setItems] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [selectedCategory, setSelectedCategory] = useState('all');
   const [openDialog, setOpenDialog] = useState(false);
   const [currentItem, setCurrentItem] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -17,25 +26,46 @@ const PortfolioManager = () => {
     description: '',
     githubUrl: '',
     videoUrl: '',
-    imageUrl: ''
+    imageUrl: '',
+    technologies: [],
+    categoryIds: []
   });
-  const navigate = useNavigate();
 
   useEffect(() => {
-    loadItems();
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        const [portfolioData, categoriesData] = await Promise.all([
+          getPortfolioItems(),
+          getCategories()
+        ]);
+        setItems(portfolioData);
+        setCategories(categoriesData);
+      } catch (error) {
+        console.error('Error loading data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    loadData();
   }, []);
-
-  const loadItems = async () => {
-    try {
-      setLoading(true);
-      const data = await getPortfolioItems();
-      setItems(data);
-    } catch (error) {
-      console.error('Error loading portfolio items:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  
+  useEffect(() => {
+    const loadFilteredItems = async () => {
+      try {
+        setLoading(true);
+        const data = await getPortfolioItems(selectedCategory === 'all' ? null : selectedCategory);
+        setItems(data);
+      } catch (error) {
+        console.error('Error loading filtered items:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    loadFilteredItems();
+  }, [selectedCategory]);
 
   const handleOpenDialog = (item = null) => {
     if (item) {
@@ -45,7 +75,9 @@ const PortfolioManager = () => {
         description: item.description,
         githubUrl: item.githubUrl || '',
         videoUrl: item.videoUrl || '',
-        imageUrl: item.imageUrl || ''
+        imageUrl: item.imageUrl || '',
+        technologies: item.technologies || [],
+        categoryIds: item.categoryIds || []
       });
     } else {
       setCurrentItem(null);
@@ -54,7 +86,9 @@ const PortfolioManager = () => {
         description: '',
         githubUrl: '',
         videoUrl: '',
-        imageUrl: ''
+        imageUrl: '',
+        technologies: [],
+        categoryIds: []
       });
     }
     setOpenDialog(true);
@@ -62,14 +96,50 @@ const PortfolioManager = () => {
 
   const handleCloseDialog = () => {
     setOpenDialog(false);
-    setCurrentItem(null);
   };
 
   const handleInputChange = (e) => {
-    const { name, value } = e.target;
+    const { name, value, type, checked } = e.target;
+    
+    if (type === 'checkbox') {
+      setFormData(prev => ({
+        ...prev,
+        [name]: checked
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    }
+  };
+
+  const handleAddTechnology = (e) => {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      const tech = e.target.value.trim();
+      if (tech && !formData.technologies.includes(tech)) {
+        setFormData(prev => ({
+          ...prev,
+          technologies: [...prev.technologies, tech]
+        }));
+        e.target.value = '';
+      }
+    }
+  };
+
+  const handleRemoveTechnology = (techToRemove) => {
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      technologies: prev.technologies.filter(tech => tech !== techToRemove)
+    }));
+  };
+
+  const handleCategoryChange = (e) => {
+    const { value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      categoryIds: value
     }));
   };
 
@@ -81,18 +151,21 @@ const PortfolioManager = () => {
       } else {
         await addPortfolioItem(formData);
       }
-      loadItems();
-      handleCloseDialog();
+      setOpenDialog(false);
+      // Refresh the items list
+      const data = await getPortfolioItems(selectedCategory === 'all' ? null : selectedCategory);
+      setItems(data);
     } catch (error) {
       console.error('Error saving portfolio item:', error);
     }
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm('Opravdu chcete smazat tuto práci z portfolia?')) {
+    if (window.confirm('Are you sure you want to delete this item?')) {
       try {
         await deletePortfolioItem(id);
-        loadItems();
+        const data = await getPortfolioItems(selectedCategory === 'all' ? null : selectedCategory);
+        setItems(data);
       } catch (error) {
         console.error('Error deleting portfolio item:', error);
       }
@@ -101,7 +174,7 @@ const PortfolioManager = () => {
 
   if (loading) {
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="50vh">
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="200px">
         <CircularProgress />
       </Box>
     );
@@ -109,81 +182,97 @@ const PortfolioManager = () => {
 
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4" component="h1">
-          Správa portfolia
-        </Typography>
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+        <Typography variant="h4" component="h1">Portfolio Manager</Typography>
         <Button
           variant="contained"
           color="primary"
           startIcon={<AddIcon />}
           onClick={() => handleOpenDialog()}
         >
-          Přidat práci
+          Add New Item
         </Button>
       </Box>
 
+      <FormControl variant="outlined" fullWidth sx={{ mb: 3 }}>
+        <InputLabel id="category-filter-label">Filter by Category</InputLabel>
+        <Select
+          labelId="category-filter-label"
+          value={selectedCategory}
+          onChange={(e) => setSelectedCategory(e.target.value)}
+          label="Filter by Category"
+        >
+          <MenuItem value="all">All Categories</MenuItem>
+          {categories.map((category) => (
+            <MenuItem key={category.id} value={category.id}>
+              {category.name}
+            </MenuItem>
+          ))}
+        </Select>
+      </FormControl>
+
       <Grid container spacing={3}>
         {items.map((item) => (
-          <Grid item xs={12} md={6} lg={4} key={item.id}>
-            <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-              {item.imageUrl && (
-                <Box
-                  component="img"
-                  src={item.imageUrl}
-                  alt={item.title}
-                  sx={{
-                    width: '100%',
-                    height: 200,
-                    objectFit: 'cover',
-                  }}
-                />
-              )}
-              <CardContent sx={{ flexGrow: 1 }}>
-                <Typography gutterBottom variant="h5" component="h2">
+          <Grid item xs={12} sm={6} md={4} key={item.id}>
+            <Card>
+              <CardContent>
+                <Typography variant="h6" component="div">
                   {item.title}
                 </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                  {item.description}
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 1, mb: 2 }}>
+                  {item.description.length > 100
+                    ? `${item.description.substring(0, 100)}...`
+                    : item.description}
                 </Typography>
-                <Divider sx={{ my: 2 }} />
-                <Box sx={{ display: 'flex', gap: 2, mt: 'auto' }}>
+                
+                {item.technologies && item.technologies.length > 0 && (
+                  <Box sx={{ mb: 2 }}>
+                    <Typography variant="caption" color="text.secondary">
+                      Technologies:
+                    </Typography>
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5 }}>
+                      {item.technologies.map((tech, index) => (
+                        <Chip key={index} label={tech} size="small" />
+                      ))}
+                    </Box>
+                  </Box>
+                )}
+
+                <Box sx={{ display: 'flex', gap: 1, mt: 2 }}>
                   {item.githubUrl && (
-                    <Tooltip title="GitHub">
-                      <IconButton 
-                        href={item.githubUrl} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        size="small"
-                      >
-                        <CodeIcon />
-                      </IconButton>
-                    </Tooltip>
+                    <IconButton
+                      size="small"
+                      color="primary"
+                      href={item.githubUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <CodeIcon />
+                    </IconButton>
                   )}
                   {item.videoUrl && (
-                    <Tooltip title="Video ukázka">
-                      <IconButton 
-                        href={item.videoUrl} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        size="small"
-                      >
-                        <VideoIcon />
-                      </IconButton>
-                    </Tooltip>
+                    <IconButton
+                      size="small"
+                      color="primary"
+                      href={item.videoUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <VideoIcon />
+                    </IconButton>
                   )}
                 </Box>
               </CardContent>
               <CardActions sx={{ justifyContent: 'flex-end' }}>
-                <IconButton 
-                  size="small" 
-                  color="primary" 
+                <IconButton
+                  size="small"
+                  color="primary"
                   onClick={() => handleOpenDialog(item)}
                 >
                   <EditIcon />
                 </IconButton>
-                <IconButton 
-                  size="small" 
+                <IconButton
+                  size="small"
                   color="error"
                   onClick={() => handleDelete(item.id)}
                 >
@@ -197,13 +286,13 @@ const PortfolioManager = () => {
 
       <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
         <form onSubmit={handleSubmit}>
-          <DialogTitle>{currentItem ? 'Upravit práci' : 'Přidat novou práci'}</DialogTitle>
+          <DialogTitle>{currentItem ? 'Edit Portfolio Item' : 'Add New Portfolio Item'}</DialogTitle>
           <DialogContent>
             <Grid container spacing={2} sx={{ mt: 1 }}>
               <Grid item xs={12}>
                 <TextField
                   fullWidth
-                  label="Název práce"
+                  label="Title"
                   name="title"
                   value={formData.title}
                   onChange={handleInputChange}
@@ -214,7 +303,7 @@ const PortfolioManager = () => {
               <Grid item xs={12}>
                 <TextField
                   fullWidth
-                  label="Popis"
+                  label="Description"
                   name="description"
                   value={formData.description}
                   onChange={handleInputChange}
@@ -227,7 +316,7 @@ const PortfolioManager = () => {
               <Grid item xs={12}>
                 <TextField
                   fullWidth
-                  label="Odkaz na GitHub"
+                  label="GitHub URL"
                   name="githubUrl"
                   value={formData.githubUrl}
                   onChange={handleInputChange}
@@ -238,7 +327,7 @@ const PortfolioManager = () => {
               <Grid item xs={12}>
                 <TextField
                   fullWidth
-                  label="Odkaz na video"
+                  label="Video URL"
                   name="videoUrl"
                   value={formData.videoUrl}
                   onChange={handleInputChange}
@@ -249,7 +338,7 @@ const PortfolioManager = () => {
               <Grid item xs={12}>
                 <TextField
                   fullWidth
-                  label="Odkaz na obrázek"
+                  label="Image URL"
                   name="imageUrl"
                   value={formData.imageUrl}
                   onChange={handleInputChange}
@@ -257,12 +346,66 @@ const PortfolioManager = () => {
                   margin="normal"
                 />
               </Grid>
+              <Grid item xs={12}>
+                <Box sx={{ mt: 2, mb: 2 }}>
+                  <Typography variant="subtitle2" gutterBottom>
+                    Technologies (press Enter or comma to add)
+                  </Typography>
+                  <TextField
+                    fullWidth
+                    variant="outlined"
+                    size="small"
+                    onKeyDown={handleAddTechnology}
+                    placeholder="Enter a technology and press Enter"
+                  />
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
+                    {formData.technologies.map((tech, index) => (
+                      <Chip
+                        key={index}
+                        label={tech}
+                        onDelete={() => handleRemoveTechnology(tech)}
+                        size="small"
+                      />
+                    ))}
+                  </Box>
+                </Box>
+              </Grid>
+              <Grid item xs={12}>
+                <FormControl fullWidth margin="normal">
+                  <InputLabel id="categories-label">Categories</InputLabel>
+                  <Select
+                    labelId="categories-label"
+                    id="categories"
+                    multiple
+                    value={formData.categoryIds}
+                    onChange={handleCategoryChange}
+                    inputProps={{ name: 'categoryIds' }}
+                    renderValue={(selected) => (
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                        {selected.map((value) => {
+                          const category = categories.find(cat => cat.id === value);
+                          return category ? (
+                            <Chip key={value} label={category.name} size="small" />
+                          ) : null;
+                        })}
+                      </Box>
+                    )}
+                  >
+                    {categories.map((category) => (
+                      <MenuItem key={category.id} value={category.id}>
+                        <Checkbox checked={formData.categoryIds.includes(category.id)} />
+                        {category.name}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
             </Grid>
           </DialogContent>
           <DialogActions>
-            <Button onClick={handleCloseDialog}>Zrušit</Button>
+            <Button onClick={handleCloseDialog}>Cancel</Button>
             <Button type="submit" variant="contained" color="primary">
-              {currentItem ? 'Uložit změny' : 'Přidat práci'}
+              {currentItem ? 'Save Changes' : 'Add Item'}
             </Button>
           </DialogActions>
         </form>

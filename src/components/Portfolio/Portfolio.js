@@ -26,13 +26,10 @@ import { styled } from '@mui/material/styles';
 import GitHubIcon from '@mui/icons-material/GitHub';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import CloseIcon from '@mui/icons-material/Close';
-import { getPortfolioItems } from '../../services/portfolioService';
+import { getPortfolioItems, getPortfolioItemsByCategory } from '../../services/portfolioService';
+import { getCategories } from '../../services/categoryService';
 
-const categories = [
-  { id: 'all', label: 'Vše' },
-  { id: 'web', label: 'Webové stránky' },
-  { id: 'mobile', label: 'Mobilní aplikace' },
-];
+const ALL_CATEGORIES_ID = 'all';
 
 const PortfolioItem = styled(Card)(({ theme }) => ({
   height: '100%',
@@ -48,29 +45,54 @@ const PortfolioItem = styled(Card)(({ theme }) => ({
 function Portfolio() {
   const theme = useTheme();
   const [portfolioItems, setPortfolioItems] = useState([]);
+  const [allCategories, setAllCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [selectedCategory, setSelectedCategory] = useState(ALL_CATEGORIES_ID);
   const [selectedProject, setSelectedProject] = useState(null);
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
-    const fetchPortfolioItems = async () => {
+    const fetchData = async () => {
       try {
         setLoading(true);
-        const items = await getPortfolioItems();
+        const [categories, items] = await Promise.all([
+          getCategories(),
+          getPortfolioItems()
+        ]);
+        
+        setAllCategories([
+          { id: ALL_CATEGORIES_ID, name: 'Vše' },
+          ...categories
+        ]);
         setPortfolioItems(items);
         setError(null);
       } catch (err) {
-        console.error('Error fetching portfolio items:', err);
-        setError('Nepodařilo se načíst portfolio. Zkuste to prosím později.');
+        console.error('Error fetching data:', err);
+        setError('Nepodařilo se načíst data. Zkuste to prosím později.');
       } finally {
         setLoading(false);
       }
     };
 
-    fetchPortfolioItems();
+    fetchData();
   }, []);
+  
+  useEffect(() => {
+    const fetchFilteredItems = async () => {
+      if (selectedCategory === ALL_CATEGORIES_ID) {
+        const items = await getPortfolioItems();
+        setPortfolioItems(items);
+      } else {
+        const items = await getPortfolioItemsByCategory(selectedCategory);
+        setPortfolioItems(items);
+      }
+    };
+    
+    if (selectedCategory) {
+      fetchFilteredItems();
+    }
+  }, [selectedCategory]);
 
   const handleCategoryChange = (event, newValue) => {
     setSelectedCategory(newValue);
@@ -84,10 +106,6 @@ function Portfolio() {
   const handleCloseDialog = () => {
     setOpen(false);
   };
-
-  const filteredItems = selectedCategory === 'all' 
-    ? portfolioItems 
-    : portfolioItems.filter(item => item.category && item.category.toLowerCase() === selectedCategory);
 
   return (
     <Box sx={{ py: 8, bgcolor: 'background.paper' }}>
@@ -128,6 +146,7 @@ function Portfolio() {
               mb: 4,
             }}
           >
+            {allCategories.length > 0 && (
             <Tabs
               value={selectedCategory}
               onChange={handleCategoryChange}
@@ -135,16 +154,13 @@ function Portfolio() {
               textColor="primary"
               variant="scrollable"
               scrollButtons="auto"
+              sx={{ mb: 4 }}
             >
-              {categories.map((category) => (
-                <Tab 
-                  key={category.id} 
-                  value={category.id} 
-                  label={category.label} 
-                  sx={{ px: 4, py: 1.5 }}
-                />
+              {allCategories.map((category) => (
+                <Tab key={category.id} value={category.id} label={category.name} />
               ))}
             </Tabs>
+          )}
           </Paper>
         </Box>
 
@@ -166,7 +182,7 @@ function Portfolio() {
               Zkusit znovu
             </Button>
           </Box>
-        ) : filteredItems.length === 0 ? (
+        ) : portfolioItems.length === 0 ? (
           <Box textAlign="center" py={4} width="100%">
             <Typography variant="h6" color="textSecondary">
               Žádné projekty k zobrazení
@@ -174,7 +190,7 @@ function Portfolio() {
           </Box>
         ) : (
           <Grid container spacing={4}>
-            {filteredItems.map((item) => (
+            {portfolioItems.map((item) => (
               <Grid item xs={12} sm={6} md={4} key={item.id}>
                 <PortfolioItem elevation={3}>
                   <CardMedia
@@ -279,13 +295,30 @@ function Portfolio() {
                   )}
                 </DialogContentText>
               </Box>
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
-                <Chip 
-                  label={selectedProject.category || 'web'} 
-                  color="primary"
-                  variant="outlined"
-                  size="small"
-                />
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 2, mb: 2 }}>
+                {selectedProject.technologies && selectedProject.technologies.map((tech, index) => (
+                  <Chip 
+                    key={`tech-${index}`} 
+                    label={tech} 
+                    color="primary" 
+                    variant="outlined" 
+                    size="small"
+                    sx={{ mb: 1 }}
+                  />
+                ))}
+                {selectedProject.categoryIds && selectedProject.categoryIds.map(catId => {
+                  const category = allCategories.find(c => c.id === catId);
+                  return category ? (
+                    <Chip 
+                      key={`cat-${catId}`} 
+                      label={category.name} 
+                      color="secondary"
+                      variant="outlined"
+                      size="small"
+                      sx={{ mb: 1 }}
+                    />
+                  ) : null;
+                })}
               </Box>
             </DialogContent>
             <DialogActions>
