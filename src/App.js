@@ -2,6 +2,7 @@ import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
+import { GlobalStyles } from '@mui/material';
 import Box from '@mui/material/Box';
 import CircularProgress from '@mui/material/CircularProgress';
 import { useAuthState } from 'react-firebase-hooks/auth';
@@ -15,6 +16,7 @@ import Contact from './components/Contact/Contact';
 import Footer from './components/Footer/Footer';
 import { AdminLogin, MessagesList, PrivateRoute } from './components/Admin';
 import FloatingAdmin from './components/FloatingAdmin/FloatingAdmin';
+import CustomCursor from './components/CustomCursor/CustomCursor';
 
 const theme = createTheme({
   palette: {
@@ -40,6 +42,13 @@ const theme = createTheme({
       fontWeight: 500,
     },
   },
+  components: {
+    MuiButtonBase: {
+      defaultProps: {
+        disableRipple: true,
+      },
+    },
+  },
 });
 
 function App() {
@@ -56,36 +65,39 @@ function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <div className="App">
-        <Header />
-        <main>
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/o-mne" element={<About />} />
-            <Route path="/sluzby" element={<Services />} />
-            <Route path="/portfolio" element={<Portfolio />} />
-            <Route path="/kontakt" element={<Contact />} />
-            
-            {/* Admin routes */}
-            <Route path="/admin" element={
-              user ? <Navigate to="/admin/messages" replace /> : <AdminLogin />
-            } />
-            <Route 
-              path="/admin/messages" 
-              element={
-                <PrivateRoute>
-                  <MessagesList />
-                </PrivateRoute>
-              } 
-            />
-            
-            {/* Redirect unknown routes to home */}
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </main>
-        <Footer />
-        <FloatingAdmin />
-      </div>
+      <GlobalStyles
+        styles={{
+          '*': {
+            cursor: 'none !important',
+          },
+          'a, button, [role="button"], [onclick]': {
+            cursor: 'none !important',
+          },
+        }}
+      />
+      <CustomCursor />
+      <Header />
+      <FloatingAdmin />
+      <Box component="main" sx={{ minHeight: '100vh' }}>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/o-mne" element={<About />} />
+          <Route path="/sluzby" element={<Services />} />
+          <Route path="/portfolio" element={<Portfolio />} />
+          <Route path="/kontakt" element={<Contact />} />
+          <Route path="/admin" element={<AdminLogin />} />
+          <Route 
+            path="/admin/zpravy" 
+            element={
+              <PrivateRoute user={user}>
+                <MessagesList />
+              </PrivateRoute>
+            } 
+          />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Box>
+      <Footer />
     </ThemeProvider>
   );
 }
