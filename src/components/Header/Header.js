@@ -11,14 +11,11 @@ import {
   ListItemText,
   useMediaQuery,
   useTheme,
-  Box,
-  Avatar
+  Box
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
-import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
-import { Link as RouterLink, useNavigate } from 'react-router-dom';
-import { useAuthState, signOut } from 'firebase/auth';
-import { auth } from '../../firebase';
+import { Link as RouterLink } from 'react-router-dom';
+import '@fontsource/bebas-neue';
 
 const navItems = [
   { text: 'Domů', path: '/' },
@@ -32,17 +29,6 @@ function Header() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const [user] = useAuthState(auth);
-  const navigate = useNavigate();
-  
-  const handleLogout = async () => {
-    try {
-      await signOut(auth);
-      navigate('/');
-    } catch (error) {
-      console.error('Logout error:', error);
-    }
-  };
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -66,7 +52,14 @@ function Header() {
               },
             }}
           >
-            <ListItemText primary={item.text} />
+            <ListItemText 
+              primary={item.text} 
+              primaryTypographyProps={{
+                fontFamily: '"Bebas Neue", sans-serif',
+                fontSize: '1.2rem',
+                letterSpacing: '1px'
+              }}
+            />
           </ListItem>
         ))}
       </List>
@@ -87,45 +80,18 @@ function Header() {
               textDecoration: 'none',
               display: 'flex',
               alignItems: 'center',
+              fontFamily: '"Bebas Neue", sans-serif',
+              fontSize: '1.8rem',
+              letterSpacing: '1.5px',
               '&:hover': {
                 cursor: 'pointer',
                 opacity: 0.9
               }
             }}
           >
-            Skajny Portfolio
+            SKAJNY PORTFOLIO
           </Typography>
         </Box>
-        
-        {user ? (
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <IconButton 
-              color="inherit" 
-              component={RouterLink} 
-              to="/admin/messages"
-              title="Administrace"
-            >
-              <AdminPanelSettingsIcon />
-            </IconButton>
-            <Button 
-              color="inherit" 
-              onClick={handleLogout}
-              sx={{ textTransform: 'none' }}
-            >
-              Odhlásit se
-            </Button>
-          </Box>
-        ) : (
-          <Button 
-            color="inherit" 
-            component={RouterLink} 
-            to="/admin"
-            startIcon={<AdminPanelSettingsIcon />}
-            sx={{ textTransform: 'none' }}
-          >
-            Přihlásit se
-          </Button>
-        )}
         
         {isMobile ? (
           <IconButton
@@ -147,12 +113,16 @@ function Header() {
                 sx={{ 
                   color: 'white',
                   mx: 1,
+                  fontFamily: '"Bebas Neue", sans-serif',
+                  fontSize: '1.2rem',
+                  letterSpacing: '1px',
+                  textTransform: 'none',
                   '&:hover': {
                     backgroundColor: 'rgba(255, 255, 255, 0.1)',
                   },
                 }}
               >
-                {item.text}
+                {item.text.toUpperCase()}
               </Button>
             ))}
           </Box>

@@ -16,14 +16,12 @@ import {
   Button,
   Box,
   IconButton,
-  Chip,
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogContentText,
   DialogActions,
 } from '@mui/material';
-import { Logout, Visibility, Delete } from '@mui/icons-material';
+import { Logout, Visibility } from '@mui/icons-material'; // Delete ikona byla odstraněna, protože se nepoužívá
 
 function MessagesList() {
   const [messages, setMessages] = useState([]);

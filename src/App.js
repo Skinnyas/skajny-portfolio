@@ -2,6 +2,8 @@ import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
+import Box from '@mui/material/Box';
+import CircularProgress from '@mui/material/CircularProgress';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth } from './firebase';
 import Header from './components/Header/Header';
@@ -12,6 +14,7 @@ import Portfolio from './components/Portfolio/Portfolio';
 import Contact from './components/Contact/Contact';
 import Footer from './components/Footer/Footer';
 import { AdminLogin, MessagesList, PrivateRoute } from './components/Admin';
+import FloatingAdmin from './components/FloatingAdmin/FloatingAdmin';
 
 const theme = createTheme({
   palette: {
@@ -81,6 +84,7 @@ function App() {
           </Routes>
         </main>
         <Footer />
+        <FloatingAdmin />
       </div>
     </ThemeProvider>
   );

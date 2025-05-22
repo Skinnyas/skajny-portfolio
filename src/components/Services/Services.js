@@ -38,7 +38,6 @@ const services = [
   {
     icon: <StorageIcon sx={{ fontSize: 50, color: 'primary.main', mb: 2 }} />,
     title: 'Backend vývoj',
-    title: 'Backend vývoj',
     description: 'Výkonné backendové systémy a API pro vaše webové a mobilní aplikace.'
   },
   {
